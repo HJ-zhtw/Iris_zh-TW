@@ -2,11 +2,13 @@ package net.coderbot.iris.gl.texture;
 
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL20C;
 import org.lwjgl.opengl.GL30C;
 import org.lwjgl.opengl.GL43C;
+import org.lwjgl.system.MemoryUtil;
 
 public interface DepthCopyStrategy {
 	// FB -> T
@@ -24,10 +26,8 @@ public interface DepthCopyStrategy {
 		public void copy(GlFramebuffer sourceFb, int sourceTexture, GlFramebuffer destFb, int destTexture, int width, int height) {
 			sourceFb.bindAsReadBuffer();
 
-			int previousTexture = GlStateManager.getActiveTextureName();
-			RenderSystem.bindTexture(destTexture);
-
-			GlStateManager._glCopyTexSubImage2D(
+			IrisRenderSystem.copyTexSubImage2D(
+				destTexture,
 				// target
 				GL20C.GL_TEXTURE_2D,
 				// level
@@ -40,8 +40,6 @@ public interface DepthCopyStrategy {
 				width,
 				// height
 				height);
-
-			RenderSystem.bindTexture(previousTexture);
 		}
 	}
 
@@ -58,10 +56,7 @@ public interface DepthCopyStrategy {
 
 		@Override
 		public void copy(GlFramebuffer sourceFb, int sourceTexture, GlFramebuffer destFb, int destTexture, int width, int height) {
-			sourceFb.bindAsReadBuffer();
-			destFb.bindAsDrawBuffer();
-
-			GL30C.glBlitFramebuffer(0, 0, width, height,
+			IrisRenderSystem.blitFramebuffer(sourceFb.getId(), destFb.getId(), 0, 0, width, height,
 				0, 0, width, height,
 				GL30C.GL_DEPTH_BUFFER_BIT | GL30C.GL_STENCIL_BUFFER_BIT,
 				GL30C.GL_NEAREST);
@@ -103,7 +98,13 @@ public interface DepthCopyStrategy {
 	}
 
 	static DepthCopyStrategy fastest(boolean combinedStencilRequired) {
-		if (GL.getCapabilities().OpenGL43) {
+		// Check whether glCopyImageSubData is available by checking the function directly...
+		// Gl.getCapabilities().OpenGL43 can be false even if OpenGL 4.3 functions are supported,
+		// because Minecraft requests an OpenGL 3.2 forward compatible function.
+		//
+		// Perhaps calling GL43.isAvailable would be a different option, but we only need one
+		// function, so we just check for that function.
+		if (GL.getCapabilities().glCopyImageSubData != MemoryUtil.NULL) {
 			return new Gl43CopyImage();
 		}
 

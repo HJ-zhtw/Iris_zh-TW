@@ -19,6 +19,7 @@
     "options.MixinSodiumGameOptionPages",
     "options.MixinSodiumGameOptions",
     "options.MixinSodiumOptionsGUI",
+    "pbr_animation.MixinTextureAtlasSprite",
     "separate_ao.MixinBlockRenderer",
     "separate_ao.MixinFluidRenderer",
     "shader_overrides.MixinChunkProgram",
@@ -29,12 +30,13 @@
     "shadow_map.MixinChunkRenderManager",
     "shadow_map.MixinGameRendererContext",
     "shadow_map.MixinSodiumWorldRenderer",
-    "vertex_format.entity.MixinQuadVertexType",
+    "vertex_format.entity.MixinBufferBuilder_ExtendedVertexFormatCompat",
     "vertex_format.ChunkMeshAttributeAccessor",
     "vertex_format.GlVertexAttributeFormatAccessor",
     "vertex_format.MixinChunkMeshAttribute",
     "vertex_format.MixinChunkOneshotGraphicsState",
     "vertex_format.MixinGlVertexFormatBuilder",
+    "vertex_format.MixinModelVertexUtil",
     "vertex_format.MixinMultidrawChunkRenderBackend",
     "vertex_format.MixinSodiumWorldRenderer"
   ]

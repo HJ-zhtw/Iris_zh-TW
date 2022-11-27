@@ -1,12 +1,19 @@
 package net.coderbot.iris.shaderpack;
 
 import com.google.common.collect.ImmutableList;
+import net.coderbot.iris.Iris;
+import net.coderbot.iris.gl.texture.InternalTextureFormat;
+import net.coderbot.iris.vendored.joml.Vector4f;
+
+import java.util.Optional;
 
 public class PackShadowDirectives {
 	// Bump this up if you want more shadow color buffers!
 	// This is currently set at 2 for ShadersMod / OptiFine parity but can theoretically be bumped up to 8.
 	// TODO: Make this configurable?
 	public static final int MAX_SHADOW_COLOR_BUFFERS = 2;
+
+	private final OptionalBoolean shadowEnabled;
 
 	private int resolution;
 	// Use a boxed form so we can use null to indicate that there is not an FOV specified.
@@ -20,6 +27,7 @@ public class PackShadowDirectives {
 	private final boolean shouldRenderTerrain;
 	private final boolean shouldRenderTranslucent;
 	private final boolean shouldRenderEntities;
+	private final boolean shouldRenderPlayer;
 	private final boolean shouldRenderBlockEntities;
 	private final OptionalBoolean cullingState;
 
@@ -68,8 +76,10 @@ public class PackShadowDirectives {
 		this.shouldRenderTerrain = properties.getShadowTerrain().orElse(true);
 		this.shouldRenderTranslucent = properties.getShadowTranslucent().orElse(true);
 		this.shouldRenderEntities = properties.getShadowEntities().orElse(true);
+		this.shouldRenderPlayer = properties.getShadowPlayer().orElse(false);
 		this.shouldRenderBlockEntities = properties.getShadowBlockEntities().orElse(true);
 		this.cullingState = properties.getShadowCulling();
+		this.shadowEnabled = properties.getShadowEnabled();
 
 		this.depthSamplingSettings = ImmutableList.of(new DepthSamplingSettings(), new DepthSamplingSettings());
 
@@ -93,10 +103,12 @@ public class PackShadowDirectives {
 		this.shouldRenderTerrain = shadowDirectives.shouldRenderTerrain;
 		this.shouldRenderTranslucent = shadowDirectives.shouldRenderTranslucent;
 		this.shouldRenderEntities = shadowDirectives.shouldRenderEntities;
+		this.shouldRenderPlayer = shadowDirectives.shouldRenderPlayer;
 		this.shouldRenderBlockEntities = shadowDirectives.shouldRenderBlockEntities;
 		this.cullingState = shadowDirectives.cullingState;
 		this.depthSamplingSettings = shadowDirectives.depthSamplingSettings;
 		this.colorSamplingSettings = shadowDirectives.colorSamplingSettings;
+		this.shadowEnabled = shadowDirectives.shadowEnabled;
 	}
 
 	public int getResolution() {
@@ -139,12 +151,20 @@ public class PackShadowDirectives {
 		return shouldRenderEntities;
 	}
 
+	public boolean shouldRenderPlayer() {
+		return shouldRenderPlayer;
+	}
+
 	public boolean shouldRenderBlockEntities() {
 		return shouldRenderBlockEntities;
 	}
 
 	public OptionalBoolean getCullingState() {
 		return cullingState;
+	}
+
+	public OptionalBoolean isShadowEnabled() {
+		return shadowEnabled;
 	}
 
 	public ImmutableList<DepthSamplingSettings> getDepthSamplingSettings() {
@@ -180,6 +200,7 @@ public class PackShadowDirectives {
 		acceptColorMipmapSettings(directives, colorSamplingSettings);
 		acceptDepthFilteringSettings(directives, depthSamplingSettings);
 		acceptColorFilteringSettings(directives, colorSamplingSettings);
+		acceptBufferDirectives(directives, colorSamplingSettings);
 	}
 
 	/**
@@ -274,6 +295,33 @@ public class PackShadowDirectives {
 		}
 	}
 
+	private void acceptBufferDirectives(DirectiveHolder directives, ImmutableList<SamplingSettings> settings) {
+		for (int i = 0; i < settings.size(); i++) {
+			String bufferName = "shadowcolor" + i;
+			int finalI = i;
+			directives.acceptConstStringDirective(bufferName + "Format", format -> {
+				Optional<InternalTextureFormat> internalFormat = InternalTextureFormat.fromString(format);
+
+				if (internalFormat.isPresent()) {
+					settings.get(finalI).setFormat(internalFormat.get());
+				} else {
+					Iris.logger.warn("Unrecognized internal texture format " + format + " specified for " + bufferName + "Format, ignoring.");
+				}
+			});
+
+			// TODO: Only for composite and deferred
+			directives.acceptConstBooleanDirective(bufferName + "Clear",
+				shouldClear -> settings.get(finalI).setClear(shouldClear));
+
+			// TODO: Only for composite, deferred, and final
+
+			// Note: This is still relevant even if shouldClear is false,
+			// since this will be the initial color of the buffer.
+			directives.acceptConstVec4Directive(bufferName + "ClearColor",
+				clearColor -> settings.get(finalI).setClearColor(clearColor));
+		}
+	}
+
 	@Override
 	public String toString() {
 		return "PackShadowDirectives{" +
@@ -300,9 +348,27 @@ public class PackShadowDirectives {
 		 */
 		private boolean nearest;
 
+		/**
+		 * Whether to clear the buffer every frame.
+		 */
+		private boolean clear;
+
+		/**
+		 * The color to clear the buffer to. If {@code clear} is false, this has no effect.
+		 */
+		private Vector4f clearColor;
+
+		/**
+		 * The internal format to use for the color buffer.
+		 */
+		private InternalTextureFormat format;
+
 		public SamplingSettings() {
 			mipmap = false;
 			nearest = false;
+			clear = true;
+			clearColor = new Vector4f(1.0F);
+			format = InternalTextureFormat.RGBA;
 		}
 
 		protected void setMipmap(boolean mipmap) {
@@ -313,6 +379,18 @@ public class PackShadowDirectives {
 			this.nearest = nearest;
 		}
 
+		protected void setClear(boolean clear) {
+			this.clear = clear;
+		}
+
+		protected void setClearColor(Vector4f clearColor) {
+			this.clearColor = clearColor;
+		}
+
+		protected void setFormat(InternalTextureFormat format) {
+			this.format = format;
+		}
+
 		public boolean getMipmap() {
 			return this.mipmap;
 		}
@@ -321,11 +399,26 @@ public class PackShadowDirectives {
 			return this.nearest;
 		}
 
+		public boolean getClear() {
+			return clear;
+		}
+
+		public Vector4f getClearColor() {
+			return clearColor;
+		}
+
+		public InternalTextureFormat getFormat() {
+			return this.format;
+		}
+
 		@Override
 		public String toString() {
 			return "SamplingSettings{" +
 					"mipmap=" + mipmap +
 					", nearest=" + nearest +
+					", clear=" + clear +
+					", clearColor=" + clearColor +
+					", format=" + format.name() +
 					'}';
 		}
 	}
