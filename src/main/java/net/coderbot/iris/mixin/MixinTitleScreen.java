@@ -66,6 +66,14 @@ public class MixinTitleScreen extends Screen {
 			return;
 		}
 
+		if (Iris.isSodiumInvalid()) {
+			Minecraft.getInstance().setScreen(new AlertScreen(
+					Minecraft.getInstance()::stop,
+					new TranslatableComponent("iris.sodium.failure.title").withStyle(ChatFormatting.RED),
+					new TranslatableComponent("iris.sodium.failure.reason"),
+					new TranslatableComponent("menu.quit")));
+		}
+
 		Minecraft.getInstance().setScreen(new ConfirmScreen(
 				(boolean accepted) -> {
 					if (accepted) {

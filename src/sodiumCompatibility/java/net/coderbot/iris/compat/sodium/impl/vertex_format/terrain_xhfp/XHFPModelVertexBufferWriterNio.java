@@ -3,14 +3,13 @@ package net.coderbot.iris.compat.sodium.impl.vertex_format.terrain_xhfp;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferWriterNio;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
-import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexUtil;
 import net.coderbot.iris.compat.sodium.impl.block_context.BlockContextHolder;
 import net.coderbot.iris.compat.sodium.impl.block_context.ContextAwareVertexWriter;
+import me.jellysquid.mods.sodium.client.util.Norm3b;
 import net.coderbot.iris.compat.sodium.impl.vertex_format.IrisModelVertexFormats;
 import net.coderbot.iris.vendored.joml.Vector3f;
 import net.coderbot.iris.vertices.ExtendedDataHelper;
 import net.coderbot.iris.vertices.NormalHelper;
-import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
 
@@ -31,40 +30,71 @@ public class XHFPModelVertexBufferWriterNio extends VertexBufferWriterNio implem
 	}
 
 	@Override
-	public void writeQuad(float x, float y, float z, int color, float u, float v, int light) {
+	public void copyQuadAndFlipNormal() {
+		ensureCapacity(4);
+
+		ByteBuffer src = this.byteBuffer.duplicate();
+		ByteBuffer dst = this.byteBuffer.duplicate();
+
+		src.position(this.byteBuffer.position() + this.writeOffset - STRIDE * 4);
+		src.limit(src.position() + STRIDE * 4);
+
+		dst.position(this.byteBuffer.position() + this.writeOffset);
+		dst.limit(dst.position() + STRIDE * 4);
+
+		dst.put(src);
+
+		// Now flip vertex normals
+		int packedNormal = this.byteBuffer.getInt(this.writeOffset + 32);
+		int inverted = NormalHelper.invertPackedNormal(packedNormal);
+
+		this.byteBuffer.putInt(this.writeOffset + 32, inverted);
+		this.byteBuffer.putInt(this.writeOffset + 32 + STRIDE, inverted);
+		this.byteBuffer.putInt(this.writeOffset + 32 + STRIDE * 2, inverted);
+		this.byteBuffer.putInt(this.writeOffset + 32 + STRIDE * 3, inverted);
+
+		// We just wrote 4 vertices, advance by 4
+		for (int i = 0; i < 4; i++) {
+			this.advance();
+		}
+
+		// Ensure vertices are flushed
+		this.flush();
+	}
+
+	@Override
+	public void writeVertex(float posX, float posY, float posZ, int color, float u, float v, int light, int chunkId) {
 		uSum += u;
 		vSum += v;
 
-		this.writeQuadInternal(
-				ModelVertexUtil.denormalizeVertexPositionFloatAsShort(x),
-				ModelVertexUtil.denormalizeVertexPositionFloatAsShort(y),
-				ModelVertexUtil.denormalizeVertexPositionFloatAsShort(z),
-				color,
-				ModelVertexUtil.denormalizeVertexTextureFloatAsShort(u),
-				ModelVertexUtil.denormalizeVertexTextureFloatAsShort(v),
-				light,
-				contextHolder.blockId,
-				contextHolder.renderType,
-				ExtendedDataHelper.computeMidBlock(x, y, z, contextHolder.localPosX, contextHolder.localPosY, contextHolder.localPosZ)
-		);
+		short materialId = contextHolder.blockId;
+		short renderType = contextHolder.renderType;
+
+		this.writeQuadInternal(posX, posY, posZ, color, u, v, light, materialId, renderType, chunkId, ExtendedDataHelper.computeMidBlock(posX, posY, posZ, contextHolder.localPosX, contextHolder.localPosY, contextHolder.localPosZ));
 	}
 
-	private void writeQuadInternal(short x, short y, short z, int color, short u, short v, int light, short materialId,
-								   short renderType, int packedMidBlock) {
+	private void writeQuadInternal(float posX, float posY, float posZ, int color,
+								   float u, float v, int light, short materialId, short renderType, int chunkId, int packedMidBlock) {
 		int i = this.writeOffset;
 
 		vertexCount++;
 		// NB: uSum and vSum must already be incremented outside of this function.
 
 		ByteBuffer buffer = this.byteBuffer;
-		buffer.putShort(i, x);
-		buffer.putShort(i + 2, y);
-		buffer.putShort(i + 4, z);
+
+		buffer.putShort(i + 0, XHFPModelVertexType.encodePosition(posX));
+		buffer.putShort(i + 2, XHFPModelVertexType.encodePosition(posY));
+		buffer.putShort(i + 4, XHFPModelVertexType.encodePosition(posZ));
+		buffer.putShort(i + 6, (short) chunkId);
+
 		buffer.putInt(i + 8, color);
-		buffer.putShort(i + 12, u);
-		buffer.putShort(i + 14, v);
+
+		buffer.putShort(i + 12, XHFPModelVertexType.encodeBlockTexture(u));
+		buffer.putShort(i + 14, XHFPModelVertexType.encodeBlockTexture(v));
+
 		buffer.putShort(i + 16, (short) (light & 0xFFFF));
 		buffer.putShort(i + 18, (short) (light >> 16 & 0xFFFF));
+
 		// NB: We don't set midTexCoord, normal, and tangent here, they will be filled in later.
 		// block ID: We only set the first 2 values, any legacy shaders using z or w will get filled in based on the GLSL spec
 		// https://www.khronos.org/opengl/wiki/Vertex_Specification#Vertex_format

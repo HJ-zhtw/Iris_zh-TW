@@ -1,12 +1,19 @@
 package net.coderbot.iris.pipeline;
 
 import com.mojang.blaze3d.platform.GlStateManager;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.features.FeatureFlags;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.gbuffer_overrides.state.RenderTargetStateListener;
+import net.coderbot.iris.gl.texture.TextureType;
+import net.coderbot.iris.helpers.Tri;
 import net.coderbot.iris.mixin.LevelRendererAccessor;
 import net.coderbot.iris.shaderpack.CloudSetting;
+import net.coderbot.iris.shaderpack.ParticleRenderingSettings;
+import net.coderbot.iris.shaderpack.texture.TextureStage;
 import net.coderbot.iris.uniforms.FrameUpdateNotifier;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -18,9 +25,16 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 	public FixedFunctionWorldRenderingPipeline() {
 		BlockRenderingSettings.INSTANCE.setDisableDirectionalShading(shouldDisableDirectionalShading());
 		BlockRenderingSettings.INSTANCE.setUseSeparateAo(false);
+		BlockRenderingSettings.INSTANCE.setSeparateEntityDraws(false);
 		BlockRenderingSettings.INSTANCE.setAmbientOcclusionLevel(1.0f);
 		BlockRenderingSettings.INSTANCE.setUseExtendedVertexFormat(false);
+		BlockRenderingSettings.INSTANCE.setVoxelizeLightBlocks(false);
 		BlockRenderingSettings.INSTANCE.setBlockTypeIds(null);
+	}
+
+	@Override
+	public void onShadowBufferChange() {
+
 	}
 
 	@Override
@@ -31,7 +45,7 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 	}
 
 	@Override
-	public void renderShadows(LevelRendererAccessor levelRenderer, Camera camera) {
+	public void renderShadows(LevelRendererAccessor worldRenderer, Camera camera) {
 		// stub: nothing to do here
 	}
 
@@ -43,6 +57,11 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 	@Override
 	public OptionalInt getForcedShadowRenderDistanceChunksForDisplay() {
 		return OptionalInt.empty();
+	}
+
+	@Override
+	public Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> getTextureMap() {
+		return Object2ObjectMaps.emptyMap();
 	}
 
 	@Override
@@ -70,7 +89,7 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 
 	}
 
-	@Override
+	//@Override
 	public void setInputs(InputAvailability availability) {
 
 	}
@@ -80,7 +99,7 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 
 	}
 
-	@Override
+	//@Override
 	public void syncProgram() {
 
 	}
@@ -101,7 +120,7 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 	}
 
 	@Override
-	public void onBindTexture(int id) {
+	public void onSetShaderTexture(int id) {
 
 	}
 
@@ -178,12 +197,17 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 	}
 
 	@Override
-	public boolean shouldRenderParticlesBeforeDeferred() {
-		return false;
+	public ParticleRenderingSettings getParticleRenderingSettings() {
+		return ParticleRenderingSettings.MIXED;
 	}
 
 	@Override
 	public boolean allowConcurrentCompute() {
+		return false;
+	}
+
+	@Override
+	public boolean hasFeature(FeatureFlags flags) {
 		return false;
 	}
 

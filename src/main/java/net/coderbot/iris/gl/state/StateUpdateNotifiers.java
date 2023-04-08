@@ -5,11 +5,8 @@ package net.coderbot.iris.gl.state;
  * fog-related values.
  */
 public class StateUpdateNotifiers {
-	public static ValueUpdateNotifier fogToggleNotifier;
-	public static ValueUpdateNotifier fogModeNotifier;
 	public static ValueUpdateNotifier fogStartNotifier;
 	public static ValueUpdateNotifier fogEndNotifier;
-	public static ValueUpdateNotifier fogDensityNotifier;
 	public static ValueUpdateNotifier blendFuncNotifier;
 	public static ValueUpdateNotifier bindTextureNotifier;
 	public static ValueUpdateNotifier normalTextureChangeNotifier;

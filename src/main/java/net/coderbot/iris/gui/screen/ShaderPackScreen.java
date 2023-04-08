@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public class ShaderPackScreen extends Screen implements HudHideable {
@@ -187,8 +188,8 @@ public class ShaderPackScreen extends Screen implements HudHideable {
 		int topCenter = this.width / 2 - 76;
 		boolean inWorld = this.minecraft.level != null;
 
-		this.children.remove(this.shaderPackList);
-		this.children.remove(this.shaderOptionList);
+		this.removeWidget(this.shaderPackList);
+		this.removeWidget(this.shaderOptionList);
 
 		this.shaderPackList = new ShaderPackSelectionList(this, this.minecraft, this.width, this.height, 32, this.height - 58, 0, this.width);
 
@@ -211,28 +212,28 @@ public class ShaderPackScreen extends Screen implements HudHideable {
 			}
 		}
 
-		this.buttons.clear();
+		this.clearWidgets();
 
 		if (!this.guiHidden) {
 			if (optionMenuOpen && shaderOptionList != null) {
-				this.children.add(shaderOptionList);
+				this.addRenderableWidget(shaderOptionList);
 			} else {
-				this.children.add(shaderPackList);
+				this.addRenderableWidget(shaderPackList);
 			}
 
-			this.addButton(new Button(bottomCenter + 104, this.height - 27, 100, 20,
+			this.addRenderableWidget(new Button(bottomCenter + 104, this.height - 27, 100, 20,
 				CommonComponents.GUI_DONE, button -> onClose()));
 
-			this.addButton(new Button(bottomCenter, this.height - 27, 100, 20,
+			this.addRenderableWidget(new Button(bottomCenter, this.height - 27, 100, 20,
 				new TranslatableComponent("options.iris.apply"), button -> this.applyChanges()));
 
-			this.addButton(new Button(bottomCenter - 104, this.height - 27, 100, 20,
+			this.addRenderableWidget(new Button(bottomCenter - 104, this.height - 27, 100, 20,
 				CommonComponents.GUI_CANCEL, button -> this.dropChangesAndClose()));
 
-			this.addButton(new Button(topCenter - 78, this.height - 51, 152, 20,
+			this.addRenderableWidget(new Button(topCenter - 78, this.height - 51, 152, 20,
 				new TranslatableComponent("options.iris.openShaderPackFolder"), button -> openShaderPackFolder()));
 
-			this.screenSwitchButton = this.addButton(new Button(topCenter + 78, this.height - 51, 152, 20,
+			this.screenSwitchButton = this.addRenderableWidget(new Button(topCenter + 78, this.height - 51, 152, 20,
 				new TranslatableComponent("options.iris.shaderPackList"), button -> {
 					this.optionMenuOpen = !this.optionMenuOpen;
 
@@ -266,7 +267,7 @@ public class ShaderPackScreen extends Screen implements HudHideable {
 				x = (int) (endOfLastButton + (freeSpace / 2.0f)) - 10;
 			}
 
-			this.addButton(new ImageButton(
+			this.addRenderableWidget(new ImageButton(
 				x, this.height - 39,
 				20, 20,
 				this.guiHidden ? 20 : 0, 146, 20,
@@ -550,7 +551,9 @@ public class ShaderPackScreen extends Screen implements HudHideable {
 	}
 
 	private void openShaderPackFolder() {
-		Util.getPlatform().openUri(Iris.getShaderpacksDirectoryManager().getDirectoryUri());
+		CompletableFuture.runAsync(() -> {
+			Util.getPlatform().openUri(Iris.getShaderpacksDirectoryManager().getDirectoryUri());
+		});
 	}
 
 	// Let the screen know if an element is hovered or not, allowing for accurately updating which element is hovered

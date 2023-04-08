@@ -11,7 +11,10 @@ public class ExternallyManagedUniforms {
 	public static void addExternallyManagedUniforms(UniformHolder uniformHolder) {
 		addMat4(uniformHolder, "iris_ModelViewMatrix");
 		addMat4(uniformHolder, "u_ModelViewProjectionMatrix");
-		addMat4(uniformHolder, "iris_NormalMatrix");
+		addMat3(uniformHolder, "iris_NormalMatrix");
+		// Exclusive to pre-1.19
+		addFloat(uniformHolder, "darknessFactor");
+		addFloat(uniformHolder, "darknessLightFactor");
 	}
 
 	public static void addExternallyManagedUniforms116(UniformHolder uniformHolder) {
@@ -29,10 +32,14 @@ public class ExternallyManagedUniforms {
 		addFloat(uniformHolder, "iris_FogEnd");
 		addVec4(uniformHolder, "iris_FogColor");
 		addMat4(uniformHolder, "iris_ProjectionMatrix");
-		addFloat(uniformHolder, "u_TextureScale");
-		addFloat(uniformHolder, "u_ModelScale");
+		addMat4(uniformHolder, "iris_ModelViewMatrix");
+		addMat3(uniformHolder, "iris_NormalMatrix");
+		addFloat(uniformHolder, "iris_TextureScale");
+		addFloat(uniformHolder, "iris_GlintAlpha");
+		addFloat(uniformHolder, "iris_ModelScale");
 		addFloat(uniformHolder, "iris_ModelOffset");
-		uniformHolder.externallyManagedUniform("iris_CameraTranslation", UniformType.VEC3);
+		addVec3(uniformHolder, "iris_CameraTranslation");
+		addVec3(uniformHolder, "u_RegionOffset");
 
 		// Vanilla
 		uniformHolder.externallyManagedUniform("iris_TextureMat", UniformType.MAT4);
@@ -40,6 +47,7 @@ public class ExternallyManagedUniforms {
 		uniformHolder.externallyManagedUniform("iris_ProjMat", UniformType.MAT4);
 		uniformHolder.externallyManagedUniform("iris_ChunkOffset", UniformType.VEC3);
 		uniformHolder.externallyManagedUniform("iris_ColorModulator", UniformType.VEC4);
+		uniformHolder.externallyManagedUniform("iris_NormalMat", UniformType.MAT3);
 		uniformHolder.externallyManagedUniform("iris_FogStart", UniformType.FLOAT);
 		uniformHolder.externallyManagedUniform("iris_FogEnd", UniformType.FLOAT);
 		uniformHolder.externallyManagedUniform("iris_FogDensity", UniformType.FLOAT);
@@ -48,8 +56,17 @@ public class ExternallyManagedUniforms {
 		uniformHolder.externallyManagedUniform("iris_FogColor", UniformType.VEC4);
 	}
 
+	private static void addMat3(UniformHolder uniformHolder, String name) {
+		uniformHolder.externallyManagedUniform(name, UniformType.MAT3);
+	}
+
+
 	private static void addMat4(UniformHolder uniformHolder, String name) {
 		uniformHolder.externallyManagedUniform(name, UniformType.MAT4);
+	}
+
+	private static void addVec3(UniformHolder uniformHolder, String name) {
+		uniformHolder.externallyManagedUniform(name, UniformType.VEC3);
 	}
 
 	private static void addVec4(UniformHolder uniformHolder, String name) {

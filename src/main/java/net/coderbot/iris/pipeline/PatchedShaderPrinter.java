@@ -23,7 +23,7 @@ public class PatchedShaderPrinter {
 		programCounter = 0;
 	}
 
-	public static void debugPatchedShaders(String name, String vertex, String geometry, String fragment) {
+	public static void debugPatchedShaders(String name, String vertex, String geometry, String fragment, String json) {
 		if (prettyPrintShaders) {
 			final Path debugOutDir = FabricLoader.getInstance().getGameDir().resolve("patched_shaders");
 			if (!outputLocationCleared) {
@@ -59,9 +59,16 @@ public class PatchedShaderPrinter {
 				if (fragment != null) {
 					Files.write(debugOutDir.resolve(prefix + name + ".fsh"), fragment.getBytes(StandardCharsets.UTF_8));
 				}
+				if (json != null) {
+					Files.write(debugOutDir.resolve(prefix + name + ".json"), json.getBytes(StandardCharsets.UTF_8));
+				}
 			} catch (IOException e) {
 				Iris.logger.warn("Failed to write debug patched shader source", e);
 			}
 		}
+	}
+
+	public static void debugPatchedShaders(String name, String vertex, String geometry, String fragment) {
+		debugPatchedShaders(name, vertex, geometry, fragment, null);
 	}
 }

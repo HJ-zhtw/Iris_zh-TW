@@ -278,20 +278,19 @@ public class AdvancedShadowCullingFrustum extends Frustum {
 		this.z = cameraZ;
 	}
 
-	@Override
 	public boolean isVisible(AABB aabb) {
 		if (boxCuller != null && boxCuller.isCulled(aabb)) {
 			return false;
 		}
 
-		return this.isVisible(aabb.minX, aabb.minY, aabb.minZ, aabb.maxX, aabb.maxY, aabb.maxZ);
+		return this.isVisible(aabb.minX, aabb.minY, aabb.minZ, aabb.maxX, aabb.maxY, aabb.maxZ) != 0;
 	}
 
 	// For Sodium
 	// TODO: change this to respect intersections on 1.18+!
-	public boolean fastAabbTest(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
+	public int fastAabbTest(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
 		if (boxCuller != null && boxCuller.isCulled(minX, minY, minZ, maxX, maxY, maxZ)) {
-			return false;
+			return 0;
 		}
 
 		return isVisible(minX, minY, minZ, maxX, maxY, maxZ);
@@ -303,14 +302,14 @@ public class AdvancedShadowCullingFrustum extends Frustum {
 		return false;
 	}
 
-	private boolean isVisible(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
+	private int isVisible(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
 		float f = (float)(minX - this.x);
 		float g = (float)(minY - this.y);
 		float h = (float)(minZ - this.z);
 		float i = (float)(maxX - this.x);
 		float j = (float)(maxY - this.y);
 		float k = (float)(maxZ - this.z);
-		return this.checkCornerVisibility(f, g, h, i, j, k) != 0;
+		return this.checkCornerVisibility(f, g, h, i, j, k);
 	}
 
 
@@ -325,13 +324,9 @@ public class AdvancedShadowCullingFrustum extends Frustum {
 	 * @return 0 if nothing is visible, 1 if everything is visible, 2 if only some corners are visible.
 	 */
 	private int checkCornerVisibility(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
-		boolean inside = true;
 		float outsideBoundX;
 		float outsideBoundY;
 		float outsideBoundZ;
-		float insideBoundX;
-		float insideBoundY;
-		float insideBoundZ;
 
 		for (int i = 0; i < planeCount; ++i) {
 			Vector4f plane = this.planes[i];
@@ -341,32 +336,25 @@ public class AdvancedShadowCullingFrustum extends Frustum {
 
 			if (plane.x() < 0) {
 				outsideBoundX = minX;
-				insideBoundX = maxX;
 			} else {
 				outsideBoundX = maxX;
-				insideBoundX = minX;
 			}
 
 			if (plane.y() < 0) {
 				outsideBoundY = minY;
-				insideBoundY = maxY;
 			} else {
 				outsideBoundY = maxY;
-				insideBoundY = minY;
 			}
 
 			if (plane.z() < 0) {
 				outsideBoundZ = minZ;
-				insideBoundZ = maxZ;
 			} else {
 				outsideBoundZ = maxZ;
-				insideBoundZ = minZ;
 			}
 
 			if (Math.fma(plane.x(), outsideBoundX, Math.fma(plane.y(), outsideBoundY, plane.z() * outsideBoundZ)) < -plane.w()) {
 				return 0;
 			}
-			inside &= Math.fma(plane.x(), insideBoundX, Math.fma(plane.y(), insideBoundY, plane.z() * insideBoundZ)) >= -plane.w();
 		}
 
 		return 2;

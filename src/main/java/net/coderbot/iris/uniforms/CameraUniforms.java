@@ -24,12 +24,13 @@ public class CameraUniforms {
 			.uniform1f(ONCE, "near", () -> 0.05)
 			.uniform1f(PER_FRAME, "far", CameraUniforms::getRenderDistanceInBlocks)
 			.uniform3d(PER_FRAME, "cameraPosition", tracker::getCurrentCameraPosition)
+			.uniform1f(PER_FRAME, "eyeAltitude", tracker::getCurrentCameraPositionY)
 			.uniform3d(PER_FRAME, "previousCameraPosition", tracker::getPreviousCameraPosition);
 	}
 
 	private static int getRenderDistanceInBlocks() {
 		// TODO: Should we ask the game renderer for this?
-		return client.options.renderDistance * 16;
+		return client.options.getEffectiveRenderDistance() * 16;
 	}
 
 	public static Vector3d getUnshiftedCameraPosition() {
@@ -105,6 +106,10 @@ public class CameraUniforms {
 
 		public Vector3d getPreviousCameraPosition() {
 			return previousCameraPosition;
+		}
+
+		public double getCurrentCameraPositionY() {
+			return currentCameraPosition.y;
 		}
 	}
 }

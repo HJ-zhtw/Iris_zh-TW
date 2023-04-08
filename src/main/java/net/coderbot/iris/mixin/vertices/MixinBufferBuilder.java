@@ -6,6 +6,7 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormatElement;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.vendored.joml.Vector3f;
 import net.coderbot.iris.vertices.BlockSensitiveBufferBuilder;
 import net.coderbot.iris.vertices.BufferBuilderPolygonView;
@@ -75,7 +76,7 @@ public abstract class MixinBufferBuilder implements BufferVertexConsumer, BlockS
 	private ByteBuffer buffer;
 
 	@Shadow
-	private int mode;
+	private VertexFormat.Mode mode;
 
 	@Shadow
 	private VertexFormat format;
@@ -87,20 +88,20 @@ public abstract class MixinBufferBuilder implements BufferVertexConsumer, BlockS
 	private @Nullable VertexFormatElement currentElement;
 
 	@Shadow
-	public abstract void begin(int drawMode, VertexFormat vertexFormat);
+	public abstract void begin(VertexFormat.Mode drawMode, VertexFormat vertexFormat);
 
 	@Shadow
 	public abstract void putShort(int i, short s);
 
 	@Override
-	public void iris$beginWithoutExtending(int drawMode, VertexFormat vertexFormat) {
+	public void iris$beginWithoutExtending(VertexFormat.Mode drawMode, VertexFormat vertexFormat) {
 		iris$shouldNotExtend = true;
 		begin(drawMode, vertexFormat);
 		iris$shouldNotExtend = false;
 	}
 
 	@Inject(method = "begin", at = @At("HEAD"))
-	private void iris$onBegin(int drawMode, VertexFormat format, CallbackInfo ci) {
+	private void iris$onBegin(VertexFormat.Mode drawMode, VertexFormat format, CallbackInfo ci) {
 		boolean shouldExtend = (!iris$shouldNotExtend) && BlockRenderingSettings.INSTANCE.shouldUseExtendedVertexFormat();
 		extending = shouldExtend && (format == DefaultVertexFormat.BLOCK || format == DefaultVertexFormat.NEW_ENTITY
 			|| format == DefaultVertexFormat.POSITION_COLOR_TEX_LIGHTMAP);
@@ -112,7 +113,7 @@ public abstract class MixinBufferBuilder implements BufferVertexConsumer, BlockS
 	}
 
 	@Inject(method = "begin", at = @At("RETURN"))
-	private void iris$afterBegin(int drawMode, VertexFormat format, CallbackInfo ci) {
+	private void iris$afterBegin(VertexFormat.Mode drawMode, VertexFormat format, CallbackInfo ci) {
 		if (extending) {
 			if (format == DefaultVertexFormat.NEW_ENTITY) {
 				this.format = IrisVertexFormats.ENTITY;
@@ -125,8 +126,8 @@ public abstract class MixinBufferBuilder implements BufferVertexConsumer, BlockS
 		}
 	}
 
-	@Inject(method = "discard", at = @At("HEAD"))
-	private void iris$onReset(CallbackInfo ci) {
+	@Inject(method = "discard()V", at = @At("HEAD"))
+	private void iris$onDiscard(CallbackInfo ci) {
 		extending = false;
 		vertexCount = 0;
 	}
@@ -156,8 +157,15 @@ public abstract class MixinBufferBuilder implements BufferVertexConsumer, BlockS
 			// ENTITY_ELEMENT
 			this.putShort(0, currentBlock);
 			this.putShort(2, currentRenderType);
-			this.nextElement();
+		} else {
+			// ENTITY_ELEMENT
+			this.putShort(0, (short) CapturedRenderingState.INSTANCE.getCurrentRenderedEntity());
+			this.putShort(2, (short) CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity());
+			this.putShort(4, (short) CapturedRenderingState.INSTANCE.getCurrentRenderedItem());
 		}
+
+		this.nextElement();
+
 		// MID_TEXTURE_ELEMENT
 		this.putFloat(0, 0);
 		this.putFloat(4, 0);
@@ -177,7 +185,7 @@ public abstract class MixinBufferBuilder implements BufferVertexConsumer, BlockS
 
 		vertexCount++;
 
-		if (mode == GL11.GL_QUADS && vertexCount == 4 || mode == GL11.GL_TRIANGLES && vertexCount == 3) {
+		if (mode == VertexFormat.Mode.QUADS && vertexCount == 4 || mode == VertexFormat.Mode.TRIANGLES && vertexCount == 3) {
 			fillExtendedData(vertexCount);
 		}
 	}
@@ -222,7 +230,7 @@ public abstract class MixinBufferBuilder implements BufferVertexConsumer, BlockS
 		} else {
 			midUOffset = 12;
 			midVOffset = 8;
-			normalOffset = 16;
+			normalOffset = 22;
 			tangentOffset = 4;
 		}
 

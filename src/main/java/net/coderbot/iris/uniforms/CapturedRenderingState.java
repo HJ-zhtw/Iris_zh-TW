@@ -13,12 +13,14 @@ public class CapturedRenderingState {
 	private Matrix4f gbufferModelView;
 	private Matrix4f gbufferProjection;
 	private Vector3d fogColor;
+	private float fogDensity;
 	private float tickDelta;
 	private int currentRenderedBlockEntity;
-	private Runnable blockEntityIdListener = null;
 
 	private int currentRenderedEntity = -1;
-	private Runnable entityIdListener = null;
+	private int currentRenderedItem = -1;
+
+	private float currentAlphaTest;
 
 	private CapturedRenderingState() {
 	}
@@ -51,6 +53,14 @@ public class CapturedRenderingState {
 		fogColor = new Vector3d(red, green, blue);
 	}
 
+	public float getFogDensity() {
+		return fogDensity;
+	}
+
+	public void setFogDensity(float fogDensity) {
+		this.fogDensity = fogDensity;
+	}
+
 	public void setTickDelta(float tickDelta) {
 		this.tickDelta = tickDelta;
 	}
@@ -61,10 +71,6 @@ public class CapturedRenderingState {
 
 	public void setCurrentBlockEntity(int entity) {
 		this.currentRenderedBlockEntity = entity;
-
-		if (this.blockEntityIdListener != null) {
-			this.blockEntityIdListener.run();
-		}
 	}
 
 	public int getCurrentRenderedBlockEntity() {
@@ -73,21 +79,25 @@ public class CapturedRenderingState {
 
 	public void setCurrentEntity(int entity) {
 		this.currentRenderedEntity = entity;
-
-		if (this.entityIdListener != null) {
-			this.entityIdListener.run();
-		}
-	}
-
-	public ValueUpdateNotifier getEntityIdNotifier() {
-		return listener -> this.entityIdListener = listener;
-	}
-
-	public ValueUpdateNotifier getBlockEntityIdNotifier() {
-		return listener -> this.blockEntityIdListener = listener;
 	}
 
 	public int getCurrentRenderedEntity() {
 		return currentRenderedEntity;
+	}
+
+	public void setCurrentRenderedItem(int item) {
+		this.currentRenderedItem = item;
+	}
+
+	public int getCurrentRenderedItem() {
+		return currentRenderedItem;
+	}
+
+    public float getCurrentAlphaTest() {
+		return currentAlphaTest;
+    }
+
+	public void setCurrentAlphaTest(float alphaTest) {
+		this.currentAlphaTest = alphaTest;
 	}
 }

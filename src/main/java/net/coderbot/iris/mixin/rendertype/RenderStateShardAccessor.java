@@ -11,6 +11,6 @@ public interface RenderStateShardAccessor {
 
 	@Accessor("TRANSLUCENT_TRANSPARENCY")
 	static RenderStateShard.TransparencyStateShard getTranslucentTransparency() {
-		return null;
+		throw new AssertionError();
 	}
 }

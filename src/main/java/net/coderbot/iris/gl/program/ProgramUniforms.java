@@ -52,7 +52,11 @@ public class ProgramUniforms {
 	}
 
 	private static long getCurrentTick() {
-		return Objects.requireNonNull(Minecraft.getInstance().level).getGameTime();
+		if (Minecraft.getInstance().level == null) {
+			return 0L;
+		} else {
+			return Minecraft.getInstance().level.getGameTime();
+		}
 	}
 
 	public void update() {
@@ -158,7 +162,7 @@ public class ProgramUniforms {
 
 		@Override
 		public OptionalInt location(String name, UniformType type) {
-			int id = IrisRenderSystem.getUniformLocation(program, name);
+			int id = GlStateManager._glGetUniformLocation(program, name);
 
 			if (id == -1) {
 				return OptionalInt.empty();
@@ -222,6 +226,11 @@ public class ProgramUniforms {
 							Iris.logger.error("[" + this.name + "] Wrong uniform type for externally-managed uniform " + name + ": " + externalProvided + " is provided but the program expects " + expectedName + ".");
 						}
 
+						continue;
+					}
+
+					if (name.startsWith("Chunks[")) {
+						// explicitly filter out Chunks[] UBO stuff
 						continue;
 					}
 
@@ -334,6 +343,8 @@ public class ProgramUniforms {
 			return UniformType.FLOAT;
 		} else if (type == GL20C.GL_INT) {
 			return UniformType.INT;
+		} else if (type == GL20C.GL_BOOL) {
+			return UniformType.INT;
 		} else if (type == GL20C.GL_FLOAT_MAT4) {
 			return UniformType.MAT4;
 		} else if (type == GL20C.GL_FLOAT_VEC4) {
@@ -341,7 +352,7 @@ public class ProgramUniforms {
 		} else if (type == GL20C.GL_INT_VEC4) {
 			return UniformType.VEC4I;
 		} else if (type == GL20C.GL_FLOAT_MAT3) {
-			return null;
+			return UniformType.MAT3;
 		} else if (type == GL20C.GL_FLOAT_VEC3) {
 			return UniformType.VEC3;
 		} else if (type == GL20C.GL_INT_VEC3) {

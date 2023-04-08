@@ -15,9 +15,9 @@ import net.coderbot.iris.gl.texture.PixelType;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.rendertarget.RenderTargets;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
+import net.coderbot.iris.vendored.joml.Matrix4f;
 import net.minecraft.client.Minecraft;
 import org.apache.commons.io.IOUtils;
-import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL21C;
 
 import java.io.IOException;
@@ -27,12 +27,12 @@ import java.util.function.IntSupplier;
 
 public class CenterDepthSampler {
 	private static final double LN2 = Math.log(2);
-	private boolean hasFirstSample;
-	private boolean everRetrieved;
 	private final Program program;
 	private final GlFramebuffer framebuffer;
 	private final int texture;
 	private final int altTexture;
+	private boolean hasFirstSample;
+	private boolean everRetrieved;
 	private boolean destroyed;
 
 	public CenterDepthSampler(IntSupplier depthSupplier, float halfLife) {
@@ -40,8 +40,7 @@ public class CenterDepthSampler {
 		this.altTexture = GlStateManager._genTexture();
 		this.framebuffer = new GlFramebuffer();
 
-		// Fall back to a less precise format if the system doesn't support OpenGL 3
-		InternalTextureFormat format = GL.getCapabilities().OpenGL32 ? InternalTextureFormat.R32F : InternalTextureFormat.RGB16;
+		InternalTextureFormat format = InternalTextureFormat.R32F;
 		setupColorTexture(texture, format);
 		setupColorTexture(altTexture, format);
 		RenderSystem.bindTexture(0);
@@ -51,13 +50,6 @@ public class CenterDepthSampler {
 
 		try {
 			String fsh = new String(IOUtils.toByteArray(Objects.requireNonNull(getClass().getResourceAsStream("/centerDepth.fsh"))), StandardCharsets.UTF_8);
-
-			if (GL.getCapabilities().OpenGL32) {
-				fsh = fsh.replace("VERSIONPLACEHOLDER", "150 compatibility");
-			} else {
-				fsh = fsh.replace("#define IS_GL3", "");
-				fsh = fsh.replace("VERSIONPLACEHOLDER", "120");
-			}
 			String vsh = new String(IOUtils.toByteArray(Objects.requireNonNull(getClass().getResourceAsStream("/centerDepth.vsh"))), StandardCharsets.UTF_8);
 
 			builder = ProgramBuilder.begin("centerDepthSmooth", vsh, null, fsh, ImmutableSet.of(0, 1, 2));
@@ -69,6 +61,8 @@ public class CenterDepthSampler {
 		builder.addDynamicSampler(() -> altTexture, "altDepth");
 		builder.uniform1f(UniformUpdateFrequency.PER_FRAME, "lastFrameTime", SystemTimeUniforms.TIMER::getLastFrameTime);
 		builder.uniform1f(UniformUpdateFrequency.ONCE, "decay", () -> (1.0f / ((halfLife * 0.1) / LN2)));
+		// TODO: can we just do this for all composites?
+		builder.uniformJomlMatrix(UniformUpdateFrequency.ONCE, "projection", () -> new Matrix4f(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, -1, -1, 0, 1));
 		this.program = builder.build();
 	}
 

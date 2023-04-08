@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
+import net.coderbot.iris.gl.texture.TextureType;
 import net.coderbot.iris.mixin.GlStateManagerAccessor;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.minecraft.client.renderer.texture.AbstractTexture;
@@ -37,21 +38,21 @@ public class TextureTracker {
 		return textures.get(id);
 	}
 
-	public void onBindTexture(int id) {
+	public void onSetShaderTexture(int unit, int id) {
 		if (lockBindCallback) {
 			return;
 		}
-		if (GlStateManagerAccessor.getActiveTexture() == 0) {
+		if (unit == 0) {
 			lockBindCallback = true;
 			if (bindTextureListener != null) {
 				bindTextureListener.run();
 			}
 			WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
 			if (pipeline != null) {
-				pipeline.onBindTexture(id);
+				pipeline.onSetShaderTexture(id);
 			}
 			// Reset texture state
-			IrisRenderSystem.bindTextureToUnit(0, id);
+			IrisRenderSystem.bindTextureToUnit(TextureType.TEXTURE_2D.getGlType(), 0, id);
 			lockBindCallback = false;
 		}
 	}

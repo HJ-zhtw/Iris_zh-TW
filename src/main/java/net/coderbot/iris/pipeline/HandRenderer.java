@@ -33,7 +33,7 @@ public class HandRenderer {
 
 		// We need to scale the matrix by 0.125 so the hand doesn't clip through blocks.
 		Matrix4f scaleMatrix = Matrix4f.createScaleMatrix(1F, 1F, DEPTH);
-		scaleMatrix.multiply(gameRenderer.getProjectionMatrix(camera, tickDelta, false));
+		scaleMatrix.multiply(gameRenderer.getProjectionMatrix(((GameRendererAccessor) gameRenderer).invokeGetFov(camera, tickDelta, false)));
 		gameRenderer.resetProjectionMatrix(scaleMatrix);
 
 		pose.pose().setIdentity();
@@ -87,15 +87,16 @@ public class HandRenderer {
 
 		renderingSolid = true;
 
-		Minecraft.getInstance().getItemInHandRenderer().renderHandsWithItems(tickDelta, poseStack, bufferSource, Minecraft.getInstance().player, Minecraft.getInstance().getEntityRenderDispatcher().getPackedLightCoords(camera.getEntity(), tickDelta));
+		gameRenderer.itemInHandRenderer.renderHandsWithItems(tickDelta, poseStack, bufferSource.getUnflushableWrapper(), Minecraft.getInstance().player, Minecraft.getInstance().getEntityRenderDispatcher().getPackedLightCoords(camera.getEntity(), tickDelta));
 
 		Minecraft.getInstance().getProfiler().pop();
+
+		bufferSource.readyUp();
+		bufferSource.endBatch();
 
 		gameRenderer.resetProjectionMatrix(CapturedRenderingState.INSTANCE.getGbufferProjection());
 
 		poseStack.popPose();
-
-		bufferSource.endBatch();
 
 		renderingSolid = false;
 

@@ -4,7 +4,11 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import it.unimi.dsi.fastutil.booleans.BooleanConsumer;
-import net.coderbot.iris.gl.blending.AlphaTestOverride;
+import it.unimi.dsi.fastutil.objects.Object2BooleanMap;
+import it.unimi.dsi.fastutil.objects.Object2BooleanMaps;
+import net.coderbot.iris.Iris;
+import net.coderbot.iris.gl.blending.AlphaTest;
+import net.coderbot.iris.gl.blending.BlendMode;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
 import net.coderbot.iris.gl.blending.BufferBlendInformation;
 import org.jetbrains.annotations.Nullable;
@@ -22,14 +26,15 @@ public class ProgramDirectives {
 	private final int[] drawBuffers;
 	private final float viewportScale;
 	@Nullable
-	private final AlphaTestOverride alphaTestOverride;
+	private final AlphaTest alphaTestOverride;
 
 	private final Optional<BlendModeOverride> blendModeOverride;
 	private final List<BufferBlendInformation> bufferBlendInformations;
 	private final ImmutableSet<Integer> mipmappedBuffers;
 	private final ImmutableMap<Integer, Boolean> explicitFlips;
+	private boolean unknownDrawBuffers;
 
-	private ProgramDirectives(int[] drawBuffers, float viewportScale, @Nullable AlphaTestOverride alphaTestOverride,
+	private ProgramDirectives(int[] drawBuffers, float viewportScale, @Nullable AlphaTest alphaTestOverride,
 							  Optional<BlendModeOverride> blendModeOverride, List<BufferBlendInformation> bufferBlendInformations, ImmutableSet<Integer> mipmappedBuffers,
 							  ImmutableMap<Integer, Boolean> explicitFlips) {
 		this.drawBuffers = drawBuffers;
@@ -39,6 +44,7 @@ public class ProgramDirectives {
 		this.bufferBlendInformations = bufferBlendInformations;
 		this.mipmappedBuffers = mipmappedBuffers;
 		this.explicitFlips = explicitFlips;
+		this.unknownDrawBuffers = false;
 	}
 
 	ProgramDirectives(ProgramSource source, ShaderProperties properties, Set<Integer> supportedRenderTargets,
@@ -62,7 +68,10 @@ public class ProgramDirectives {
 			} else {
 				throw new IllegalStateException("Unhandled comment directive type!");
 			}
-		}).orElse(new int[] { 0 });
+		}).orElseGet(() -> {
+			unknownDrawBuffers = true;
+			return new int[] { 0 };
+		});
 
 		if (properties != null) {
 			viewportScale = properties.getViewportScaleOverrides().getOrDefault(source.getName(), 1.0f);
@@ -160,11 +169,15 @@ public class ProgramDirectives {
 		return drawBuffers;
 	}
 
+	public boolean hasUnknownDrawBuffers() {
+		return unknownDrawBuffers;
+	}
+
 	public float getViewportScale() {
 		return viewportScale;
 	}
 
-	public Optional<AlphaTestOverride> getAlphaTestOverride() {
+	public Optional<AlphaTest> getAlphaTestOverride() {
 		return Optional.ofNullable(alphaTestOverride);
 	}
 

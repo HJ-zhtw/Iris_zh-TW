@@ -37,6 +37,18 @@ public abstract class NormalHelper {
 		return ((int) (x * 127) & 0xFF) | (((int) (y * 127) & 0xFF) << 8) | (((int) (z * 127) & 0xFF) << 16) | (((int) (w * 127) & 0xFF) << 24);
 	}
 
+	public static int invertPackedNormal(int packed) {
+		int ix = -(packed & 255);
+		int iy = -((packed >> 8) & 255);
+		int iz = -((packed >> 16) & 255);
+
+		ix &= 255;
+		iy &= 255;
+		iz &= 255;
+
+		return (packed & 0xFF000000) | (iz << 16) | (iy << 8) | ix;
+	}
+
 	/**
 	 * Version of {@link #packNormal(float, float, float, float)} that accepts a vector type.
 	 */

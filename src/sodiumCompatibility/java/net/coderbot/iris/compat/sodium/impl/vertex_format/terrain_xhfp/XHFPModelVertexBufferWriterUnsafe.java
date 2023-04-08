@@ -3,7 +3,6 @@ package net.coderbot.iris.compat.sodium.impl.vertex_format.terrain_xhfp;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferView;
 import me.jellysquid.mods.sodium.client.model.vertex.buffer.VertexBufferWriterUnsafe;
 import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexSink;
-import me.jellysquid.mods.sodium.client.render.chunk.format.ModelVertexUtil;
 import net.coderbot.iris.compat.sodium.impl.block_context.BlockContextHolder;
 import net.coderbot.iris.compat.sodium.impl.block_context.ContextAwareVertexWriter;
 import net.coderbot.iris.compat.sodium.impl.vertex_format.IrisModelVertexFormats;
@@ -29,39 +28,57 @@ public class XHFPModelVertexBufferWriterUnsafe extends VertexBufferWriterUnsafe 
 	}
 
 	@Override
-	public void writeQuad(float x, float y, float z, int color, float u, float v, int light) {
+	public void copyQuadAndFlipNormal() {
+		ensureCapacity(4);
+
+		MemoryUtil.memCopy(this.writePointer - STRIDE * 4, this.writePointer, STRIDE * 4);
+
+		// Now flip vertex normals
+		int packedNormal = MemoryUtil.memGetInt(this.writePointer + 32);
+		int inverted = NormalHelper.invertPackedNormal(packedNormal);
+
+		MemoryUtil.memPutInt(this.writePointer + 32, inverted);
+		MemoryUtil.memPutInt(this.writePointer + 32 + STRIDE, inverted);
+		MemoryUtil.memPutInt(this.writePointer + 32 + STRIDE * 2, inverted);
+		MemoryUtil.memPutInt(this.writePointer + 32 + STRIDE * 3, inverted);
+
+		// We just wrote 4 vertices, advance by 4
+		for (int i = 0; i < 4; i++) {
+			this.advance();
+		}
+
+		// Ensure vertices are flushed
+		this.flush();
+	}
+
+	@Override
+	public void writeVertex(float posX, float posY, float posZ, int color, float u, float v, int light, int chunkId) {
 		uSum += u;
 		vSum += v;
 
-		this.writeQuadInternal(
-				ModelVertexUtil.denormalizeVertexPositionFloatAsShort(x),
-				ModelVertexUtil.denormalizeVertexPositionFloatAsShort(y),
-				ModelVertexUtil.denormalizeVertexPositionFloatAsShort(z),
-				color,
-				ModelVertexUtil.denormalizeVertexTextureFloatAsShort(u),
-				ModelVertexUtil.denormalizeVertexTextureFloatAsShort(v),
-			light,
-				contextHolder.blockId,
-				contextHolder.renderType,
-				ExtendedDataHelper.computeMidBlock(x, y, z, contextHolder.localPosX, contextHolder.localPosY, contextHolder.localPosZ)
-		);
+		this.writeQuadInternal(posX, posY, posZ, color, u, v, light, contextHolder.blockId, contextHolder.renderType, chunkId, contextHolder.ignoreMidBlock ? 0 : ExtendedDataHelper.computeMidBlock(posX, posY, posZ, contextHolder.localPosX, contextHolder.localPosY, contextHolder.localPosZ));
 	}
 
-	private void writeQuadInternal(short x, short y, short z, int color, short u, short v, int light, short materialId,
-								   short renderType, int packedMidBlock) {
+	private void writeQuadInternal(float posX, float posY, float posZ, int color,
+								   float u, float v, int light, short materialId, short renderType, int chunkId, int packedMidBlock) {
 		long i = this.writePointer;
 
 		vertexCount++;
 		// NB: uSum and vSum must already be incremented outside of this function.
 
-		MemoryUtil.memPutShort(i, x);
-		MemoryUtil.memPutShort(i + 2, y);
-		MemoryUtil.memPutShort(i + 4, z);
+		MemoryUtil.memPutShort(i + 0, XHFPModelVertexType.encodePosition(posX));
+		MemoryUtil.memPutShort(i + 2, XHFPModelVertexType.encodePosition(posY));
+		MemoryUtil.memPutShort(i + 4, XHFPModelVertexType.encodePosition(posZ));
+		MemoryUtil.memPutShort(i + 6, (short) chunkId);
+
 		MemoryUtil.memPutInt(i + 8, color);
-		MemoryUtil.memPutShort(i + 12, u);
-		MemoryUtil.memPutShort(i + 14, v);
+
+		MemoryUtil.memPutShort(i + 12, XHFPModelVertexType.encodeBlockTexture(u));
+		MemoryUtil.memPutShort(i + 14, XHFPModelVertexType.encodeBlockTexture(v));
+
 		MemoryUtil.memPutShort(i + 16, (short) (light & 0xFFFF));
 		MemoryUtil.memPutShort(i + 18, (short) (light >> 16 & 0xFFFF));
+
 		// NB: We don't set midTexCoord, normal, and tangent here, they will be filled in later.
 		// block ID: We only set the first 2 values, any legacy shaders using z or w will get filled in based on the GLSL spec
 		// https://www.khronos.org/opengl/wiki/Vertex_Specification#Vertex_format

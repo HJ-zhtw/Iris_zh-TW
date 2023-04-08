@@ -8,10 +8,10 @@ import net.coderbot.iris.config.IrisConfig;
 import net.coderbot.iris.gl.GLDebug;
 import net.coderbot.iris.gl.shader.StandardMacros;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
-import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.FixedFunctionWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.PipelineManager;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
+import net.coderbot.iris.pipeline.newshader.NewWorldRenderingPipeline;
 import net.coderbot.iris.shaderpack.DimensionId;
 import net.coderbot.iris.shaderpack.OptionalBoolean;
 import net.coderbot.iris.shaderpack.ProgramSet;
@@ -197,12 +197,14 @@ public class Iris {
 			return;
 		}
 
-		setDebug(irisConfig.areDebugOptionsEnabled());
-
 		PBRTextureManager.INSTANCE.init();
 
 		// Only load the shader pack when we can access OpenGL
 		loadShaderpack();
+	}
+
+	public static void duringRenderSystemInit() {
+		setDebug(irisConfig.areDebugOptionsEnabled());
 	}
 
 	/**
@@ -286,7 +288,7 @@ public class Iris {
 		// Attempt to load an external shaderpack if it is available
 		Optional<String> externalName = irisConfig.getShaderPackName();
 
-		if (!externalName.isPresent()) {
+		if (externalName.isEmpty()) {
 			logger.info("Shaders are disabled because no valid shaderpack is selected");
 
 			setShadersDisabled();
@@ -311,6 +313,11 @@ public class Iris {
 		} catch (InvalidPathException e) {
 			logger.error("Failed to load the shaderpack \"{}\" because it contains invalid characters in its path", name);
 
+			return false;
+		}
+
+		if (!isValidShaderpack(shaderPackRoot)) {
+			logger.error("Pack \"{}\" is not valid! Can't load it.", name);
 			return false;
 		}
 
@@ -491,6 +498,10 @@ public class Iris {
 		}
 	}
 
+	public static boolean isValidToShowPack(Path pack) {
+		return Files.isDirectory(pack) || pack.toString().endsWith(".zip");
+	}
+
 	public static boolean isValidShaderpack(Path pack) {
 		if (Files.isDirectory(pack)) {
 			// Sometimes the shaderpack directory itself can be
@@ -648,8 +659,9 @@ public class Iris {
 
 		ProgramSet programs = currentPack.getProgramSet(dimensionId);
 
+		// We use DeferredWorldRenderingPipeline on 1.16, and NewWorldRendering pipeline on 1.17 when rendering shaders.
 		try {
-			return new DeferredWorldRenderingPipeline(programs);
+			return new NewWorldRenderingPipeline(programs);
 		} catch (Exception e) {
 			logger.error("Failed to create shader rendering pipeline, disabling shaders!", e);
 			// TODO: This should be reverted if a dimension change causes shaders to compile again

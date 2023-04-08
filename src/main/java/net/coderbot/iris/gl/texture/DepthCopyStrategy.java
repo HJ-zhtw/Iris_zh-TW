@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
+import net.coderbot.iris.mixin.GlStateManagerAccessor;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL20C;
 import org.lwjgl.opengl.GL30C;
@@ -26,6 +27,8 @@ public interface DepthCopyStrategy {
 		public void copy(GlFramebuffer sourceFb, int sourceTexture, GlFramebuffer destFb, int destTexture, int width, int height) {
 			sourceFb.bindAsReadBuffer();
 
+			int previousTexture = RenderSystem.getTextureId(GlStateManagerAccessor.getActiveTexture());
+
 			IrisRenderSystem.copyTexSubImage2D(
 				destTexture,
 				// target
@@ -40,6 +43,8 @@ public interface DepthCopyStrategy {
 				width,
 				// height
 				height);
+
+			RenderSystem.bindTexture(previousTexture);
 		}
 	}
 

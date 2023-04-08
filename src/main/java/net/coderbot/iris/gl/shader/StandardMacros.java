@@ -12,6 +12,7 @@ import net.minecraft.SharedConstants;
 import net.minecraft.Util;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20C;
+import org.lwjgl.opengl.GL30C;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,6 +46,7 @@ public class StandardMacros {
 		define(standardDefines, getOsString());
 		define(standardDefines, getVendor());
 		define(standardDefines, getRenderer());
+		define(standardDefines, "IS_IRIS");
 
 		for (String glExtension : getGlExtensions()) {
 			define(standardDefines, glExtension);
@@ -246,7 +248,14 @@ public class StandardMacros {
 	 * @see <a href="https://github.com/sp614x/optifine/blob/9c6a5b5326558ccc57c6490b66b3be3b2dc8cbef/OptiFineDoc/doc/shaders.txt#L735-L738">Optifine Doc</a>
 	 */
 	public static Set<String> getGlExtensions() {
-		String[] extensions = Objects.requireNonNull(GlStateManager._getString(GL11.GL_EXTENSIONS)).split("\\s+");
+		// In OpenGL Core, we must use a new way of retrieving extensions.
+		int numExtensions = GL30C.glGetInteger(GL30C.GL_NUM_EXTENSIONS);
+
+		String[] extensions = new String[numExtensions];
+
+		for (int i = 0; i < numExtensions; i++) {
+			extensions[i] = GL30C.glGetStringi(GL30C.GL_EXTENSIONS, i);
+		}
 
 		// TODO note that we do not add extensions based on if the shader uses them and if they are supported
 		// see https://github.com/sp614x/optifine/blob/master/OptiFineDoc/doc/shaders.txt#L738
@@ -257,6 +266,7 @@ public class StandardMacros {
 		// https://github.com/IrisShaders/Iris/issues/971
 		return Arrays.stream(extensions).map(s -> "MC_" + s).collect(Collectors.toSet());
 	}
+
 
 	public static Map<String, String> getRenderStages() {
 		Map<String, String> stages = new HashMap<>();

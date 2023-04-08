@@ -31,7 +31,7 @@ public class SegmentedBufferBuilder implements MultiBufferSource, MemoryTracking
         if (!Objects.equals(currentType, renderType)) {
             if (currentType != null) {
                 if (shouldSortOnUpload(currentType)) {
-                    buffer.sortQuads(0, 0, 0);
+                    buffer.setQuadSortOrigin(0, 0, 0);
                 }
 
                 buffer.end();
@@ -62,7 +62,7 @@ public class SegmentedBufferBuilder implements MultiBufferSource, MemoryTracking
         usedTypes.add(currentType);
 
         if (shouldSortOnUpload(currentType)) {
-            buffer.sortQuads(0, 0, 0);
+            buffer.setQuadSortOrigin(0, 0, 0);
         }
 
         buffer.end();
@@ -73,16 +73,56 @@ public class SegmentedBufferBuilder implements MultiBufferSource, MemoryTracking
         for (RenderType type : usedTypes) {
             Pair<BufferBuilder.DrawState, ByteBuffer> pair = buffer.popNextBuffer();
 
-            BufferBuilder.DrawState drawState = pair.getFirst();
+            BufferBuilder.DrawState parameters = pair.getFirst();
             ByteBuffer slice = pair.getSecond();
 
-            segments.add(new BufferSegment(slice, drawState, type));
+            segments.add(new BufferSegment(slice, parameters, type));
         }
 
         usedTypes.clear();
 
         return segments;
     }
+
+	public List<BufferSegment> getSegmentsForType(TransparencyType transparencyType) {
+		if (currentType == null) {
+			return Collections.emptyList();
+		}
+
+		if (((BlendingStateHolder) currentType).getTransparencyType() == transparencyType) {
+			usedTypes.add(currentType);
+
+			if (shouldSortOnUpload(currentType)) {
+				buffer.setQuadSortOrigin(0, 0, 0);
+			}
+
+			buffer.end();
+			currentType = null;
+		}
+
+		List<BufferSegment> segments = new ArrayList<>(usedTypes.size());
+
+		List<RenderType> types = new ArrayList<>();
+
+		for (RenderType type : usedTypes) {
+			if (((BlendingStateHolder) type).getTransparencyType() != transparencyType) {
+				continue;
+			}
+
+			types.add(type);
+
+			Pair<BufferBuilder.DrawState, ByteBuffer> pair = buffer.popNextBuffer();
+
+			BufferBuilder.DrawState parameters = pair.getFirst();
+			ByteBuffer slice = pair.getSecond();
+
+			segments.add(new BufferSegment(slice, parameters, type));
+		}
+
+		usedTypes.removeAll(types);
+
+		return segments;
+	}
 
     private static boolean shouldSortOnUpload(RenderType type) {
         return ((RenderTypeAccessor) type).shouldSortOnUpload();
@@ -97,4 +137,9 @@ public class SegmentedBufferBuilder implements MultiBufferSource, MemoryTracking
     public int getUsedSize() {
         return ((MemoryTrackingBuffer) buffer).getUsedSize();
     }
+
+	@Override
+	public void freeAndDeleteBuffer() {
+		((MemoryTrackingBuffer) buffer).freeAndDeleteBuffer();
+	}
 }
